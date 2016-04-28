@@ -8,7 +8,7 @@ chicken schemeでcgi
 #+BEGIN_SRC scheme
   #!/usr/local/bin/csi -s
   (use chicken-cgi)
-  (define session (session-start '_test_session_name "aiueo" #:expires 3600))
+  (define session (session-start '_test_session_name "session-root-path" #:expires 3600))
   (let ([a (session-ref session 'a)])
     (if a
         (session-update! session 'a (add1 a))
