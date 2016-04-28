@@ -1,0 +1,11 @@
+;;; chicken-cgi.setup
+
+;;; コンパイル
+(compile -s -O3 -d1 "chicken-cgi.scm" -j chicken-cgi)
+(compile -s -O3 -d0 "chicken-cgi.import.scm")
+
+;;; インストール
+(install-extension
+ 'chicken-cgi
+ '("chicken-cgi.so" "chicken-cgi.import.so")
+ '((version 1.0)))
