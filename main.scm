@@ -117,20 +117,27 @@
 
 ;;; html escape
 ;;; エスケープさせた方が良い文字列には echo を使え
-(define (echo . strs)
+(define (html-escape str)
+  (with-output-to-string
+      (lambda ()
+        (string-for-each (lambda (ch)
+                           (case ch
+                             [(#\") (display "&quot;")]
+                             [(#\') (display "&#39;")]
+                             [(#\&) (display "&amp;")]
+                             [(#\<) (display "&lt;")]
+                             [(#\>) (display "&gt;")]
+                             [(#\ ) (display "&nbsp;")]
+                             [(#\newline) (display "<br />")]
+                             [else (write-char ch)]))
+                         str))))
+(define (newline->br str)
+  (irregex-replace #\newline str "<br />"))
+
+(define (echo . args)
   (for-each
-   (lambda (str) (string-for-each (lambda (ch)
-                                    (case ch
-                                      [(#\") (display "&quot;")]
-                                      [(#\') (display "&#39;")]
-                                      [(#\&) (display "&amp;")]
-                                      [(#\<) (display "&lt;")]
-                                      [(#\>) (display "&gt;")]
-                                      [(#\ ) (display "&nbsp;")]
-                                      [(#\newline) (display "<br />")]
-                                      [else (write-char ch)]))
-                                  (->string str)))
-   strs))
+   (compose display html-escape ->string)
+   args))
 ;;; getによるパラメタ
 (define (get-alist)
   (form-urldecode

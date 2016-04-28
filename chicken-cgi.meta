@@ -2,4 +2,5 @@
 ((author "yagihiroki")
  (synopsis "chicken-cgi")
  (license "MIT license http://opensource.org/licenses/mit-license.php")
+ (depends uri-common sha1 message-digest srfi-19)
  (files "main.scm" "chicken-cgi.scm" "chicken-cgi.setup" "chicken-cgi.meta"))
