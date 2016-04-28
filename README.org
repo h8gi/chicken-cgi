@@ -1,0 +1,22 @@
+* chicken-cgi
+
+chicken schemeでcgi
+[[http://wiki.call-cc.org/eggref/4/http-session][http-session]] の存在に気付かないでsessionの機能をつけてしまった。
+
+** example
+
+#+BEGIN_SRC scheme
+  #!/usr/local/bin/csi -s
+  (use chicken-cgi)
+  (define session (session-start '_test_session_name "aiueo" #:expires 3600))
+  (let ([a (session-ref session 'a)])
+    (if a
+        (session-update! session 'a (add1 a))
+        (session-update! session 'a 0)))
+  (html!  (<head>
+           (<meta/> (@ [charset: "UTF8"]))
+           (<title> (display "hello")))
+          (<body>
+           (display (session-ref session 'a))))
+#+END_SRC
+
