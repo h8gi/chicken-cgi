@@ -7,9 +7,9 @@
     [(_ expr ...)
      (handle-exceptions exn
 	 (begin
-	   (http-header "Status: 200 OK"
-			"Content-type: text/html")
-
+	   (header-set! Status: 200 'OK)
+	   (header-set! Content-Type: 'text/html)
+	   (header-send)
 	   (<body> (<h1> (display "DEBUG"))
 		   (<pre> (pp (condition->list exn)))))
        expr ...)]))
@@ -41,7 +41,7 @@
 (define-syntax html!
   (syntax-rules ()
     [(_ expr ...)
-     (begin (http-header "Content-type: text/html")
+     (begin (header-set! Content-type: 'text/html)
 	    (html5 expr ...)
 	    (quit))]))
 
@@ -161,9 +161,9 @@
   (let ([cookie (get-env "HTTP_COOKIE")])
     (if cookie
         (map (lambda (str) (let ([pair (irregex-split "=" str)])
-                         (cons (string->symbol
-                                (uri-decode-string (first pair)))
-                               (uri-decode-string (second pair)))))
+			(cons (string->symbol
+			       (uri-decode-string (first pair)))
+			      (uri-decode-string (second pair)))))
              (irregex-split "; *" cookie))
         '())))
 
@@ -187,7 +187,20 @@
 		 (if path    (conc " path="    path    "; ") "")))
   (display "\r\n"))
 
-
+(define-values (header-set! header-delete! header-send)
+  (let ([header '()])
+    (define (h-set! name . args)
+      (set! header (alist-update! name args header)))
+    (define (h-delete! name)
+      (set! header (alist-delete name header)))
+    (define (h-send)
+      (for-each (lambda (item)
+		  (display (conc (car item) ": "))
+		  (for-each (lambda (x) (display (conc " " x))) (cdr item))
+		  (display "\r\n"))
+		(reverse! header))
+      (display "\r\n"))
+    (values h-set! h-delete! h-send)))
 
 (define (http-header . lines)
   (for-each (lambda (line)
@@ -197,7 +210,8 @@
   (display "\r\n"))
 
 (define (jump-to-file url)
-  (http-header (string-append "Location: " url))
+  (header-set! Location: url)
+  (header-send)
   (quit))
 
 ;;; session ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -261,7 +275,7 @@
 (define (session-ref session key)
   (alist-ref key (__session__-alist session)))
 
-;;; http-headerより先に呼ばないとダメ
+;;; header-sendより先に呼ばないとダメ
 (define (delete-session! session)
   (delete-file* (__session__-filepath session))
   (set-cookie (__session__-name session) "hoge" #:expires -86400))
