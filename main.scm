@@ -42,6 +42,7 @@
   (syntax-rules ()
     [(_ expr ...)
      (begin (header-set! Content-type: 'text/html)
+	    (header-send)
 	    (html5 expr ...)
 	    (quit))]))
 
@@ -174,18 +175,20 @@
 
 ;;; expiresは秒で指定
 (define (set-cookie name value #!key expires domain path)
-  (display (conc "Set-Cookie: "
-		 (uri-encode-string (->string name)) "=" (uri-encode-string (->string value)) ";"
-		 (if expires (conc " expires="
-				   (format-date				       
-				    "~a, ~d ~b ~Y ~H:~M:~S GMT"
-				    (date-add-duration
-				     (current-date (utc-timezone-locale))
-				     (seconds->time expires))) ";")
-		     "")
-		 (if domain  (conc " domain="  domain  ";") "")
-		 (if path    (conc " path="    path    "; ") "")))
-  (display "\r\n"))
+  (header-set! Set-Cookie:
+	       (conc (uri-encode-string (->string name))
+		     "="
+		     (uri-encode-string (->string value))
+		     ";"
+		     (if expires (conc " expires="
+				       (format-date				       
+					"~a, ~d ~b ~Y ~H:~M:~S GMT"
+					(date-add-duration
+					 (current-date (utc-timezone-locale))
+					 (seconds->time expires))) ";")
+			 "")
+		     (if domain  (conc " domain="  domain  ";") "")
+		     (if path    (conc " path="    path    "; ") ""))))
 
 (define-values (header-set! header-delete! header-send)
   (let ([header '()])
