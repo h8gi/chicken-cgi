@@ -166,6 +166,12 @@
                                (uri-decode-string (second pair)))))
              (irregex-split "; *" cookie))
         '())))
+
+(define (query-ref key)
+  (alist-ref key (query-alist)))
+(define (cookie-ref key)
+  (alist-ref key (cookie-alist)))
+
 ;;; expiresは秒で指定
 (define (set-cookie name value #!key expires domain path)
   (display (conc "Set-Cookie: "
