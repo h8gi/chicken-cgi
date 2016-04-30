@@ -1,47 +1,53 @@
 #+TITLE: chicken cgi
 #+OPTIONS: \n:t
 
+chicken schemeでcgi
+
 * USAGE
 
-chicken schemeでcgi
+  keytって書いてるやつはだいたいsymbolです。
 
 ** get, post, env
    
-   getとpostの変数をまとめてしまった。
    : (query-ref key) => value
-   
-   環境変数はこれで
-   : (get-env str) => value
+   getとpostの変数をまとめてしまった。
 
-** header。
+   : (get-env str) => value
+   環境変数はこれで(get-environment-variablesって流石に長い)
+
+** header
+   http(cgi)のヘッダを操作
 
    : (header-set! name . values)
-
+   
    : (header-send)
 
 ** cookie
     
-    : (cookie-ref key) => value
+   : (cookie-ref key) => value
     
-    : (cookie-set! name value [#:expires #:domain #:path])
-
-    クッキーのセットは"header-send"の呼び出し前にしてください。
+   : (cookie-set! key value [#:expires #:domain #:path])
+   クッキーのセットは"header-send"の呼び出し前にしてください。
 
 ** session
    
-   [[http://wiki.call-cc.org/eggref/4/http-session][http-session]] の存在に気付かないでsessionの機能をつけてしまった。
+   [[http://wiki.call-cc.org/eggref/4/http-session][http-session]] の存在に気付かないでsessionの機能をつけてしまった。   
 
    : (session-start session-name session-root [#:expires #:lock]) => session
-
+   session-rootはサーバ側でセッションを管理するためのディレクトリ
+   cgiに書き込み権限のあるとこで
+   
    : (session-ref session key) => value
-
+   
    : (session-set! session key value)
-
    : (session-delete! session key)
+   セッションに変更が加わる度ファイルに書き出してる。効率悪そう。
    
    : (session-unlock session)
+   sessionのlockを#tにした場合どこかでunlockしてください。
 
    : (session-destroy! session)
+   sessionを破棄
 
 ** html
    : (html! expr ...) ;; (header-set! content-type: 'text/html)してヘッダを送信までやる
