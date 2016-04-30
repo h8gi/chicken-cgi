@@ -5,7 +5,7 @@ chicken schemeでcgi
 
 * USAGE
 
-  keytって書いてるやつはだいたいsymbolです。
+  keyって書いてるやつはだいたいsymbolです。
 
 ** get, post, env
    
