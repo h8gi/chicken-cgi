@@ -1,5 +1,4 @@
-(use uri-common sha1 message-digest srfi-19)
-
+(use uri-common sha1 message-digest srfi-19 dot-locking)
 (define get-env get-environment-variable)
 
 (define-syntax cgi-debug
@@ -24,6 +23,10 @@
                       ">"))
        body ...
        (display (conc "</" 'name ">")))]
+    [(_ name (@ ())
+	body ...)
+     (<tag> name (@)
+	    body ...)]
     [(_ name body ...)
      (<tag> name (@)
             body ...)]))
@@ -33,6 +36,8 @@
      (display (conc "<" 'name " "
                     (conc  'attr "=\"" value "\" ") ...
                     "/>"))]
+    [(_ name (@ ()))
+     (<tag/> name (@))]
     [(_ name)
      (<tag/> name (@))]))
 
@@ -43,8 +48,7 @@
     [(_ expr ...)
      (begin (header-set! Content-type: 'text/html)
 	    (header-send)
-	    (html5 expr ...)
-	    (quit))]))
+	    (html5 expr ...))]))
 
 (define-syntax html5
   (syntax-rules ()
@@ -174,7 +178,7 @@
   (alist-ref key (cookie-alist)))
 
 ;;; expiresは秒で指定
-(define (set-cookie name value #!key expires domain path)
+(define (cookie-set! name value #!key expires domain path)
   (header-set! Set-Cookie:
 	       (conc (uri-encode-string (->string name))
 		     "="
@@ -205,17 +209,26 @@
       (display "\r\n"))
     (values h-set! h-delete! h-send)))
 
-(define (http-header . lines)
-  (for-each (lambda (line)
-	      (display (string-chomp line))
-	      (display "\r\n"))
-	    lines) 
-  (display "\r\n"))
-
-(define (jump-to-file url)
+(define (jump-to-url url)
   (header-set! Location: url)
-  (header-send)
-  (quit))
+  (header-send))
+
+(define-syntax link-to-sub
+  (syntax-rules ()
+    [(_ str url (pair ...))
+     (<a> (@ [href: url]
+	     pair ...)
+	  (display str))]
+    [(_ str url (pair ...) key value rest ...)
+     (link-to-sub str url (pair ... [key value]) rest ...)]))
+;;; (link-to "hello" "hello.com" class: "foo" target: "_blank" ...)
+(define-syntax link-to
+  (syntax-rules ()
+    [(_ name url)
+     (link-to-sub name url ())]
+    [(_ name url key value rest ...)
+     (link-to-sub name url ([key value]) rest ...)]))
+
 
 ;;; session ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 無効なsession idが送られてきた場合、セッションを作成しないで
@@ -231,23 +244,34 @@
   (lambda (data) (with-output-to-file filename
 	      (lambda () (write data)))))
 
-(define (session-start name session-root #!key expires)
-  (cond [(alist-ref name (cookie-alist)) =>
-	 (cut restore-session name session-root <> expires)]
-	[else
-	 (init-session name session-root expires)]))
+(define (session-start name session-root #!key expires lock)
+  (unless (directory-exists? session-root)
+    (create-directory session-root))
+  (let ([session
+	 (cond [(alist-ref name (cookie-alist)) =>
+		(cut restore-session name session-root <> expires)]
+	       [else
+		(init-session name session-root expires)])])
+    (when lock (obtain-dot-lock (__session__-filepath session)))
+    session))
+
+(define (session-unlock session)
+  (release-dot-lock (__session__-filepath session)))
+
 (define (valid-session-path? path)
   (file-exists? path))
+
 (define (restore-session name session-root id expires)
-  (set-cookie name id #:expires expires)
-  (let ([filename (string-append session-root id)])
+  (cookie-set! name id #:expires expires)
+  (let ([filename (make-pathname session-root id)])
     (if (valid-session-path? filename)
-	(make-__session__ name
-			  id
-			  filename
-			  (first (read-file filename))
-			  (session-file-writer filename)
-			  expires)
+	(begin
+	  (make-__session__ name
+			    id
+			    filename
+			    (first (read-file filename))
+			    (session-file-writer filename)
+			    expires))
 	(init-session name session-root expires))))
 
 (define (init-session name session-root expires)
@@ -258,8 +282,8 @@
 			     (get-env "REMOTE_ADDR")
 			     (get-env "QUERY_STRING")
 			     (get-env "HTTP_USER_AGENT")))]
-	 [filename (string-append session-root id)])
-    (set-cookie name id #:expires expires)
+	 [filename (make-pathname session-root id)])
+    (cookie-set! name id #:expires expires)
     (with-output-to-file filename
       (lambda () (write '())))
     (make-__session__ name
@@ -269,17 +293,22 @@
 		      (session-file-writer filename)
 		      expires)))
 
-(define (session-update! session key value)
+(define (session-set! session key value)
   (let ([new-alist (alist-update! key value (__session__-alist session))])
     (__session__-alist-set! session new-alist)
-    ((__session__-writer session) new-alist)
-    new-alist))
+    ((__session__-writer session) new-alist)))
+
 
 (define (session-ref session key)
   (alist-ref key (__session__-alist session)))
 
+(define (session-delete! session key)
+  (let ([new-alist (alist-delete key (__session__-alist session))])
+    (__session__-alist-set! session new-alist)
+    ((__session__-writer session) new-alist)))
+
 ;;; header-sendより先に呼ばないとダメ
-(define (delete-session! session)
+(define (session-destroy! session)
   (delete-file* (__session__-filepath session))
-  (set-cookie (__session__-name session) "hoge" #:expires -86400))
+  (cookie-set! (__session__-name session) "hoge" #:expires -86400))
 

@@ -1,9 +1,53 @@
-* chicken-cgi
+#+TITLE: chicken cgi
+#+OPTIONS: \n:t
+
+* USAGE
 
 chicken schemeでcgi
-[[http://wiki.call-cc.org/eggref/4/http-session][http-session]] の存在に気付かないでsessionの機能をつけてしまった。
 
-** example
+** get, post, env
+   
+   getとpostの変数をまとめてしまった。
+   : (query-ref key) => value
+   
+   環境変数はこれで
+   : (get-env str) => value
+
+** header。
+
+   : (header-set! name . values)
+
+   : (header-send)
+
+** cookie
+    
+    : (cookie-ref key) => value
+    
+    : (cookie-set! name value [#:expires #:domain #:path])
+
+    クッキーのセットは"header-send"の呼び出し前にしてください。
+
+** session
+   
+   [[http://wiki.call-cc.org/eggref/4/http-session][http-session]] の存在に気付かないでsessionの機能をつけてしまった。
+
+   : (session-start session-name session-root [#:expires #:lock]) => session
+
+   : (session-ref session key) => value
+
+   : (session-set! session key value)
+
+   : (session-delete! session key)
+   
+   : (session-unlock session)
+
+   : (session-destroy! session)
+
+** html
+   : (html! expr ...) ;; (header-set! content-type: 'text/html)してヘッダを送信までやる
+
+   
+* EXAMPLE
 
 #+BEGIN_SRC scheme
   #!/usr/local/bin/csi -s
@@ -17,6 +61,11 @@ chicken schemeでcgi
            (<meta/> (@ [charset: "UTF8"]))
            (<title> (display "hello")))
           (<body>
-           (display (session-ref session 'a))))
+           (display (session-ref session 'a))
+           (link-to "google" "http://google.co.jp" target: "_blank")
+           (<ul> (for-each (lambda (x)
+                             (<li> (@ [class: "item"])
+                                   (echo x)))
+                  '(list of something)))))
 #+END_SRC
 
