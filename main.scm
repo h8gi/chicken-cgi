@@ -210,6 +210,7 @@
     (values h-set! h-delete! h-send)))
 
 (define (jump-to-url url)
+  (header-set! Status: 302 'Ridirect)
   (header-set! Location: url)
   (header-send))
 
@@ -228,7 +229,6 @@
      (link-to-sub name url ())]
     [(_ name url key value rest ...)
      (link-to-sub name url ([key value]) rest ...)]))
-
 
 ;;; session ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 無効なsession idが送られてきた場合、セッションを作成しないで
