@@ -30,6 +30,7 @@
     [(_ name body ...)
      (<tag> name (@)
             body ...)]))
+
 (define-syntax <tag/>
   (syntax-rules ()
     [(_ name (@ (attr value) ...))
@@ -162,37 +163,8 @@
           [(string=? method "POST") (post-alist)]
           [else #f])))
 
-(define (cookie-alist)
-  (let ([cookie (get-env "HTTP_COOKIE")])
-    (if cookie
-        (map (lambda (str) (let ([pair (irregex-split "=" str)])
-			(cons (string->symbol
-			       (uri-decode-string (first pair)))
-			      (uri-decode-string (second pair)))))
-             (irregex-split "; *" cookie))
-        '())))
-
 (define (query-ref key)
   (alist-ref key (query-alist)))
-(define (cookie-ref key)
-  (alist-ref key (cookie-alist)))
-
-;;; expiresは秒で指定
-(define (cookie-set! name value #!key expires domain path)
-  (header-set! Set-Cookie:
-	       (conc (uri-encode-string (->string name))
-		     "="
-		     (uri-encode-string (->string value))
-		     ";"
-		     (if expires (conc " expires="
-				       (format-date				       
-					"~a, ~d ~b ~Y ~H:~M:~S GMT"
-					(date-add-duration
-					 (current-date (utc-timezone-locale))
-					 (seconds->time expires))) ";")
-			 "")
-		     (if domain  (conc " domain="  domain  ";") "")
-		     (if path    (conc " path="    path    "; ") ""))))
 
 (define-values (header-set! header-delete! header-send)
   (let ([header '()])
@@ -229,6 +201,40 @@
      (link-to-sub name url ())]
     [(_ name url key value rest ...)
      (link-to-sub name url ([key value]) rest ...)]))
+
+;;; COOKIE ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define (cookie-alist)
+  (let ([cookie (get-env "HTTP_COOKIE")])
+    (if cookie
+        (map (lambda (str) (let ([pair (irregex-split "=" str)])
+			(cons (string->symbol
+			       (uri-decode-string (first pair)))
+			      (uri-decode-string (second pair)))))
+             (irregex-split "; *" cookie))
+        '())))
+
+(define (cookie-ref key)
+  (alist-ref key (cookie-alist)))
+
+;;; expiresは秒で指定
+(define (cookie-set! name value #!key expires domain path secure (httponly #t))
+  (header-set! Set-Cookie:
+	       (conc (uri-encode-string (->string name))
+		     "="
+		     (uri-encode-string (->string value))
+		     ";"
+		     (if expires (conc " expires="
+				       (format-date				       
+					"~a, ~d ~b ~Y ~H:~M:~S GMT"
+					(date-add-duration
+					 (current-date (utc-timezone-locale))
+					 (seconds->time expires))) ";")
+			 "")
+		     (if domain  (conc " domain="  domain  ";") "")
+		     (if path    (conc " path="    path    "; ") "")
+		     (if secure " Secure;" "")
+		     (if httponly " Httponly;" ""))))
+
 
 ;;; session ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 無効なsession idが送られてきた場合、セッションを作成しないで
@@ -293,11 +299,13 @@
 		      (session-file-writer filename)
 		      expires)))
 
+(define (session-id session)
+  (__session__-name session))
+
 (define (session-set! session key value)
   (let ([new-alist (alist-update! key value (__session__-alist session))])
     (__session__-alist-set! session new-alist)
     ((__session__-writer session) new-alist)))
-
 
 (define (session-ref session key)
   (alist-ref key (__session__-alist session)))
