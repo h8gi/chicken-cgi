@@ -252,7 +252,7 @@
 
 (define (session-start name session-root #!key expires lock)
   (unless (directory-exists? session-root)
-    (create-directory session-root))
+    (create-directory session-root ))
   (let ([session
 	 (cond [(alist-ref name (cookie-alist)) =>
 		(cut restore-session name session-root <> expires)]
@@ -300,10 +300,10 @@
 		      expires)))
 
 (define (session-id session)
-  (__session__-name session))
+  (__session__-id session))
 
 (define (session-set! session key value)
-  (let ([new-alist (alist-update! key value (__session__-alist session))])
+  (let ([new-alist (alist-update key value (__session__-alist session))])
     (__session__-alist-set! session new-alist)
     ((__session__-writer session) new-alist)))
 
