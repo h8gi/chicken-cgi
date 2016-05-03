@@ -1,5 +1,6 @@
 (use uri-common sha1 message-digest srfi-19 dot-locking)
-(define get-env get-environment-variable)
+(define (get-env str #!optional (default #f))
+  (or (get-environment-variable str) default))
 
 (define-syntax cgi-debug
   (syntax-rules ()
@@ -163,8 +164,8 @@
           [(string=? method "POST") (post-alist)]
           [else #f])))
 
-(define (query-ref key)
-  (alist-ref key (query-alist)))
+(define (query-ref key #!optional (default #f))
+  (alist-ref key (query-alist) eqv? default))
 
 (define-values (header-set! header-delete! header-send)
   (let ([header '()])
@@ -213,8 +214,8 @@
              (irregex-split "; *" cookie))
         '())))
 
-(define (cookie-ref key)
-  (alist-ref key (cookie-alist)))
+(define (cookie-ref key #!optional (default #f))
+  (alist-ref key (cookie-alist) default))
 
 ;;; expiresは秒で指定
 (define (cookie-set! name value #!key expires domain path secure (httponly #t))
@@ -239,9 +240,10 @@
 ;;; session ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 無効なsession idが送られてきた場合、セッションを作成しないで
 ;;; #fを返す
-
-(define-record __session__
+(define-record _session_
   name id filepath alist writer expires)
+(define *session* #f)
+
 
 (define (session-file-reader filename)
   (lambda () (first (read-file filename))))
@@ -258,11 +260,12 @@
 		(cut restore-session name session-root <> expires)]
 	       [else
 		(init-session name session-root expires)])])
-    (when lock (obtain-dot-lock (__session__-filepath session)))
-    session))
+    (when lock (obtain-dot-lock (_session_-filepath session)))
+    (set! *session* session)
+    #t))
 
-(define (session-unlock session)
-  (release-dot-lock (__session__-filepath session)))
+(define (session-unlock)
+  (release-dot-lock (_session_-filepath *session*)))
 
 (define (valid-session-path? path)
   (file-exists? path))
@@ -272,7 +275,7 @@
   (let ([filename (make-pathname session-root id)])
     (if (valid-session-path? filename)
 	(begin
-	  (make-__session__ name
+	  (make-_session_ name
 			    id
 			    filename
 			    (first (read-file filename))
@@ -292,31 +295,30 @@
     (cookie-set! name id #:expires expires)
     (with-output-to-file filename
       (lambda () (write '())))
-    (make-__session__ name
+    (make-_session_ name
 		      id
 		      filename
 		      '()
 		      (session-file-writer filename)
 		      expires)))
 
-(define (session-id session)
-  (__session__-id session))
+(define (session-id)
+  (_session_-id *session*))
 
-(define (session-set! session key value)
-  (let ([new-alist (alist-update key value (__session__-alist session))])
-    (__session__-alist-set! session new-alist)
-    ((__session__-writer session) new-alist)))
+(define (session-set! key value)
+  (let ([new-alist (alist-update key value (_session_-alist *session*))])
+    (_session_-alist-set! *session* new-alist)
+    ((_session_-writer *session*) new-alist)))
 
-(define (session-ref session key)
-  (alist-ref key (__session__-alist session)))
+(define (session-ref key #!optional (default #f))
+  (alist-ref key (_session_-alist *session*) eqv? default))
 
-(define (session-delete! session key)
-  (let ([new-alist (alist-delete key (__session__-alist session))])
-    (__session__-alist-set! session new-alist)
-    ((__session__-writer session) new-alist)))
+(define (session-delete! key)
+  (let ([new-alist (alist-delete key (_session_-alist *session*))])
+    (_session_-alist-set! *session* new-alist)
+    ((_session_-writer *session*) new-alist)))
 
 ;;; header-sendより先に呼ばないとダメ
-(define (session-destroy! session)
-  (delete-file* (__session__-filepath session))
-  (cookie-set! (__session__-name session) "hoge" #:expires -86400))
-
+(define (session-destroy!)
+  (delete-file* (_session_-filepath *session*))
+  (cookie-set! (_session_-name *session*) "hoge" #:expires -86400))

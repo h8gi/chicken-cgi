@@ -9,10 +9,10 @@ chicken schemeでcgi
 
 ** get, post, env
    
-   : (query-ref key) => value
+   : (query-ref key [(default #f)]) => value
    getとpostの変数をまとめてしまった。
 
-   : (get-env str) => value
+   : (get-env str [(default #f)]) => value
    環境変数はこれで(get-environment-variablesって流石に長い)
 
 ** header
@@ -24,7 +24,7 @@ chicken schemeでcgi
 
 ** cookie
     
-   : (cookie-ref key) => value
+   : (cookie-ref key [(default #f)]) => value
     
    : (cookie-set! key value [#:expires #:domain #:path])
    クッキーのセットは"header-send"の呼び出し前にしてください。
@@ -33,20 +33,20 @@ chicken schemeでcgi
    
    [[http://wiki.call-cc.org/eggref/4/http-session][http-session]] の存在に気付かないでsessionの機能をつけてしまった。   
 
-   : (session-start session-name session-root [#:expires #:lock]) => session
+   : (session-start session-name session-root [#:expires #:lock]) => bool
    session-rootはサーバ側でセッションを管理するためのディレクトリ
    cgiに書き込み権限のあるとこで
    
-   : (session-ref session key) => value
+   : (session-ref key [(default #f)]) => value
    
-   : (session-set! session key value)
-   : (session-delete! session key)
+   : (session-set! key value)
+   : (session-delete! key)
    セッションに変更が加わる度ファイルに書き出してる。効率悪そう。
    
-   : (session-unlock session)
+   : (session-unlock)
    sessionのlockを#tにした場合どこかでunlockしてください。
 
-   : (session-destroy! session)
+   : (session-destroy!)
    sessionを破棄
 
 ** html
