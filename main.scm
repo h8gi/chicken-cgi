@@ -177,9 +177,9 @@
       (for-each (lambda (item)
 		  (display (conc (car item) ": "))
 		  (for-each (lambda (x) (display (conc " " x))) (cdr item))
-		  (display "\r\n"))
+		  (newline))
 		(reverse! header))
-      (display "\r\n"))
+      (newline))
     (values h-set! h-delete! h-send)))
 
 (define (jump-to-url url)
