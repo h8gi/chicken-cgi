@@ -170,7 +170,9 @@
 (define-values (header-set! header-delete! header-send)
   (let ([header '()])
     (define (h-set! name . args)
-      (set! header (alist-update! name args header)))
+      (set! header
+	    ;(alist-update! name args header)
+	    (cons (cons name args) header)))
     (define (h-delete! name)
       (set! header (alist-delete name header)))
     (define (h-send)
@@ -254,7 +256,7 @@
 
 (define (session-start name session-root #!key expires lock)
   (unless (directory-exists? session-root)
-    (create-directory session-root ))
+    (create-directory session-root))
   (let ([session
 	 (cond [(alist-ref name (cookie-alist)) =>
 		(cut restore-session name session-root <> expires)]
