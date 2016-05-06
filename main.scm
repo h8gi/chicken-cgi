@@ -120,6 +120,7 @@
 
   ;; other
   menu
+  canvas
   )
 
 ;;; html escape
