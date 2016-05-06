@@ -12,7 +12,7 @@ chicken schemeでcgi
    : (query-ref key [(default #f)]) => value
    getとpostの変数をまとめてしまった。
 
-   : (get-env str [(default #f)]) => value
+   : (env-ref str [(default #f)]) => value
    環境変数はこれで(get-environment-variablesって流石に長い)
 
 ** header

@@ -1,5 +1,5 @@
 (use uri-common sha1 message-digest srfi-19 dot-locking)
-(define (get-env str #!optional (default #f))
+(define (env-ref str #!optional (default #f))
   (or (get-environment-variable str) default))
 
 (define-syntax cgi-debug
@@ -148,18 +148,18 @@
 ;;; getによるパラメタ
 (define (get-alist)
   (form-urldecode
-   (get-env "QUERY_STRING")))
+   (env-ref "QUERY_STRING")))
 ;;; postによるパラメタ
 (define post-alist
   (let ([cache #f])
     (lambda ()
       (unless cache
         (set! cache (form-urldecode
-                     (read-string (string->number (get-env "CONTENT_LENGTH"))))))
+                     (read-string (string->number (env-ref "CONTENT_LENGTH"))))))
       cache)))
 ;;; get、postまとめ
 (define (query-alist)
-  (let ([method (get-env "REQUEST_METHOD")])
+  (let ([method (env-ref "REQUEST_METHOD")])
     (cond [(string=? method "GET") (get-alist)]
           [(string=? method "POST") (post-alist)]
           [else #f])))
@@ -207,7 +207,7 @@
 
 ;;; COOKIE ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define (cookie-alist)
-  (let ([cookie (get-env "HTTP_COOKIE")])
+  (let ([cookie (env-ref "HTTP_COOKIE")])
     (if cookie
         (map (lambda (str) (let ([pair (irregex-split "=" str)])
 			(cons (string->symbol
@@ -289,10 +289,10 @@
   (let* ([id (message-digest-string
 	      (sha1-primitive)
 	      (string-append (seconds->string)
-			     (get-env "REMOTE_PORT")
-			     (get-env "REMOTE_ADDR")
-			     (get-env "QUERY_STRING")
-			     (get-env "HTTP_USER_AGENT")))]
+			     (env-ref "REMOTE_PORT")
+			     (env-ref "REMOTE_ADDR")
+			     (env-ref "QUERY_STRING")
+			     (env-ref "HTTP_USER_AGENT")))]
 	 [filename (make-pathname session-root id)])
     (cookie-set! name id #:expires expires)
     (with-output-to-file filename
